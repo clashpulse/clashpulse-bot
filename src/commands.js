@@ -415,10 +415,7 @@ async function clanReport(tag) {
       { preparation: "tayyorgarlik", inWar: "urush ketmoqda", warEnded: "urush tugadi" }[w.data.state] || w.data.state;
     warText =
       "\n\n⚔️ Joriy urush: " + st + "\n" +
-      w.data.clan.name + " " + (w.data.clan.stars const ch = ctx.chat; const isGroup = ch && ch.type !== "p0).toFixed(1) + "%\n" +
-      "vs " + w.data.opponent.name + " " + (w.data.opponent.starsapi.clashofclans.com/v1";
-const CONTACT = "hojam";
-const BOT_USE0).toFixed(1) + "%";
+w.data.clan.name + " " + (w.data.clan.stars const ch = ctx.chat; const isGroup = ch && ch.type !== "p0).toFixed(1) + "%\n" +"vs " + w.data.opponent.name + " " + (w.data.opponent.starsapi.clashofclans.com/v1";const CONTACT = "hojam";const BOT_USE0).toFixed(1) + "%";
   }
 
   const part3 =
