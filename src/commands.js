@@ -381,8 +381,10 @@ async function clanReport(tag) {
     "Jami donat: " + n(totalDon) + " (olingan " + n(totalRec) + ")",
     "O'rtacha donat: " + n(avgDon),
     "Faol (donat bergan): " + activePct + "% (" + inactive + " ta passiv)",
-    "Rollar: lider " + (roles.leadert FEATURE_NAMES = {
-  player: "O'yinchi t0) + ", oqsoqol " + (roles.admin { InlineKeyboard } from "grammy";co0),
+    "Rollar: lider " + (roles.leadert 
+  player: "O'yinchi t0) + ", oqsoqol " + (roles.admin { InlineKeyboard } from "grammy";
+    
+co0),
   ].join("\n");
 
   const byTr = [...members].sort((a, b) => b.trophies - a.trophies).slice(0, 10);
