@@ -341,7 +341,7 @@ async function clanReport(tag) {
   });
   const leader = members.find((m) => m.role === "leader");
 
-  const games = (c.warWins  0) + (c.warLosses  0) + (c.warTies || 0);
+ const games = Number(c.warWins) + Number(c.warLosses) + Number(c.warTies);
   const winRate =
     c.isWarLogPublic && games
       ? Math.round(((c.warWins || 0) / games) * 100) + "%"
