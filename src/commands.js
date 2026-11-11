@@ -1,24 +1,49 @@
-// Your bot's behaviour. Add commands here; grammY's docs (grammy.dev) cover
-// keyboards, sessions, files, inline queries and everything else.
-
 import { InlineKeyboard } from "grammy"
 
 export function registerCommands(bot) {
+  const menu = new InlineKeyboard()
+    .text("👤 O‘yinchi tahlili", "player")
+    .row()
+    .text("🛡 Klan tahlili", "clan")
+    .row()
+    .text("📊 Yordam", "help")
+
   bot.command("start", (ctx) =>
-    ctx.reply(`Hi ${ctx.from?.first_name ?? "there"}. I am alive and hosted on FadeHost. Send /help to see what I can do.`, {
-      reply_markup: new InlineKeyboard().text("Ping me", "ping"),
-    }),
+    ctx.reply(
+      `Assalomu alaykum, ${ctx.from?.first_name ?? "o‘yinchi"}!
+
+Men ClashPulse botman.
+
+Clash of Clans akkauntingiz va klaningiz haqida ma’lumot olishga yordam beraman.
+
+Kerakli bo‘limni tanlang:`,
+      { reply_markup: menu },
+    ),
   )
 
   bot.command("help", (ctx) =>
-    ctx.reply(["Commands:", "/start  say hello", "/help   this list", "/ping   check I am awake", "/id     show chat and user ids", "", "Send me any text and I echo it back."].join("\n")),
+    ctx.reply(
+      "ClashPulse komandalar:\n\n/start — Bosh menyu\n/help — Yordam\n/ping — Bot holatini tekshirish",
+    ),
   )
 
-  bot.command("ping", (ctx) => ctx.reply("pong"))
+  bot.command("ping", (ctx) => ctx.reply("✅ ClashPulse ishlayapti!"))
 
-  bot.command("id", (ctx) => ctx.reply(`Chat id: ${ctx.chat.id}\nYour id: ${ctx.from?.id ?? "unknown"}`))
+  bot.callbackQuery("player", (ctx) =>
+    ctx.answerCallbackQuery().then(() =>
+      ctx.reply("👤 O‘yinchi tahlili\n\nBu bo‘limga keyingi bosqichda Player Tag kiritish imkoniyatini qo‘shamiz."),
+    ),
+  )
 
-  bot.callbackQuery("ping", (ctx) => ctx.answerCallbackQuery({ text: "pong" }))
+  bot.callbackQuery("clan", (ctx) =>
+    ctx.answerCallbackQuery().then(() =>
+      ctx.reply("🛡 Klan tahlili\n\nBu bo‘limga keyingi bosqichda Clan Tag kiritish imkoniyatini qo‘shamiz."),
+    ),
+  )
 
-  bot.on("message:text", (ctx) => ctx.reply(ctx.message.text))
+  bot.callbackQuery("help", (ctx) =>
+    ctx.answerCallbackQuery().then(() =>
+      ctx.reply("ClashPulse — Clash of Clans o‘yinchilari va klanlari uchun tahlil boti."),
+    ),
+  )
 }
