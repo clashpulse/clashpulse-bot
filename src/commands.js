@@ -340,7 +340,7 @@ async function clanReport(tag) {
   });
   const leader = members.find((m) => m.role === "leader");
 
-  const games = (c.warWins: " + n(c.clanPoints),
+  const games = (c.warWins, " + n(c.clanPoints),
   0) + (c.warTies || 0);
   const winRate =
     c.isWarLogPublic && games
