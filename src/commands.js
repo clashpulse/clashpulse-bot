@@ -167,7 +167,7 @@ async function clanReport(tag) {
   });
   const leader = members.find((m) => m.role === "leader");
 
-  const games = (c.warWinso'shin bering.");
+  const games = (c.warWins oshin bering.");
   if (!0) + (c.warTies || 0);
   const winRate =
     c.isWarLogPublic && games
