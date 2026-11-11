@@ -253,7 +253,8 @@ async function playerReport(tag) {
     "🏆 Kubok: " + n(p.trophies) + " (eng yuqori: " + n(p.bestTrophies) + ")",
     "⚔️ Urush yulduzlari: " + n(p.warStars),
     "🗡 Hujum g'alabalari: " + n(p.attackWins),
-    "🛡 Mudofaa g'alabalari: " + n(p.defenseWins),"🤝 Donat: berilgan " + n(p.donations) + ", olingan " + n(p.donationsReceived) + " (nisbat " + ratio + ")",
+    "🛡 Mudofaa g'alabalari: " + n(p.defenseWins),
+    "🤝 Donat: berilgan " + n(p.donations) + ", olingan " + n(p.donationsReceived) + " (nisbat " + ratio + ")",
     "🏛 Capital hissasi: " + n(p.clanCapitalContributions),
     p.builderHallLevel
       ? "🏗 Builder Base: BH " + p.builderHallLevel + ", kubok " + n(p.builderBaseTrophies) + " (eng yuqori " + n(p.bestBuilderBaseTrophies) + ")"
@@ -339,7 +340,9 @@ async function clanReport(tag) {
     roles[m.role] = (roles[m.role] || 0) + 1;
   });
   const leader = members.find((m) => m.role === "leader");
-  const games = (c.warWins || 0) + (c.warTies || 0);
+
+  const games = (c.warWins: " + n(c.clanPoints),
+  0) + (c.warTies || 0);
   const winRate =
     c.isWarLogPublic && games
       ? Math.round(((c.warWins || 0) / games) * 100) + "%"
@@ -381,9 +384,9 @@ async function clanReport(tag) {
     "Jami donat: " + n(totalDon) + " (olingan " + n(totalRec) + ")",
     "O'rtacha donat: " + n(avgDon),
     "Faol (donat bergan): " + activePct + "% (" + inactive + " ta passiv)",
-    "Rollar: lider " + (roles.leadert 
+    "Rollar: lider " + (roles.leadert FEATURE_NAMES = {
   player: "O'yinchi t0) + ", oqsoqol " + (roles.admin { InlineKeyboard } from "grammy";
-    
+
 co0),
   ].join("\n");
 
