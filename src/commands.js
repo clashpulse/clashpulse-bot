@@ -46,4 +46,9 @@ Kerakli bo‘limni tanlang:`,
       ctx.reply("ClashPulse — Clash of Clans o‘yinchilari va klanlari uchun tahlil boti."),
     ),
   )
+bot.command("ip", async (ctx) => {
+    const r = await fetch("https://api.ipify.org");
+    ctx.reply("IP: " + (await r.text()));
+  });
 }
+
