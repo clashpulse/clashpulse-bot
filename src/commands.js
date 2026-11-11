@@ -417,7 +417,7 @@ async function clanReport(tag) {
       "\n\n⚔️ Joriy urush: " + st + "\n" +
     w.data.clan.name + " " + (w.data.clan.stars) 
     const ch = ctx.chat; 
-    const isGroup = ch && ch.type !== "p0.toFixed(1) + "%\n" +"vs " + w.data.opponent.name + " " + (w.data.opponent.starsapi.clashofclans.com/v1";
+    const isGroup = ch && ch.type !== "p0.toFixed(1) + "%\n" +"vs " + w.data.opponent.name + " " + w.data.opponent.starsapi.clashofclans.com/v1";
     const CONTACT = "hojam";const BOT_USE0.toFixed(1) + "%";
   }
 
