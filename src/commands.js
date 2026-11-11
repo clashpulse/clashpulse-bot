@@ -1,133 +1,11 @@
-import fs from "node:fs";
 import { InlineKeyboard } from "grammy";
 
 const API = "https://api.clashofclans.com/v1";
 const CONTACT = "hojam";
-const BOT_USERNAME = "clashpulsebot";
-const ADMIN_ID = String(process.env.ADMIN_ID || "");
 
-// ---------- Statistika (faylga saqlanadi) ----------
-const DATA_DIR = process.env.DATA_DIR || "data";
-const STATS_FILE = DATA_DIR + "/stats.json";
-let stats = { users: {}, chats: {}, features: {}, tags: {} };
-let dirty = false;
-try {
-  stats = { ...stats, ...JSON.parse(fs.readFileSync(STATS_FILE, "utf8")) };
-} catch (e) {}
-
-function saveStats() {
-  if (!dirty) return;
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(STATS_FILE, JSON.stringify(stats));
-    dirty = false;
-  } catch (e) {}
-}
-setInterval(saveStats, 30000);
-
-function feat(kind) {
-  stats.features[kind] = (stats.features[kind] || 0) + 1;
-  dirty = true;
-}
-
-function viewed(kind, tag, name, key) {
-  feat(key || kind);
-  const t = stats.tags[tag] || (stats.tags[tag] = { k: kind, n: name, c: 0 });
-  t.n = name;
-  t.c++;
-  dirty = true;
-}
-
-function track(ctx) {
-  const u = ctx.from;
-  if (!u || u.is_bot) return;
-  const ch = ctx.chat;
-  const isGroup = ch && ch.type !== "private";
-  const isCmd = ctx.message?.text?.startsWith("/");
-  if (isGroup && !isCmd && !ctx.callbackQuery) return;
-  const now = Date.now();
-  const rec = stats.users[u.id] || (stats.users[u.id] = { f: now, c: 0 });
-  rec.n = [u.first_name, u.last_name].filter(Boolean).join(" ");
-  rec.u = u.username || "";
-  rec.l = now;
-  if (ctx.message || ctx.callbackQuery) rec.c++;
-  if (isGroup) stats.chats[ch.id] = { t: ch.title || "", k: ch.type, l: now };
-  dirty = true;
-}
-
-const FEATURE_NAMES = {
-  player: "O'yinchi tahlili",
-  clan: "Klan tahlili",
-  inline: "Inline qidiruv",
-  help: "Yordam",
-  plans: "Planlar",
-  start: "/start",
-};
-
-function statsText() {
-  const now = Date.now();
-  const users = Object.values(stats.users);
-  const day = users.filter((u) => now - u.l < 86400000).length;
-  const week = users.filter((u) => now - u.l < 7 * 86400000).length;
-  const fresh = users.filter((u) => now - u.f < 86400000).length;
-  const chats = Object.values(stats.chats);
-
-  const top = [...users]
-    .sort((a, b) => b.c - a.c)
-    .slice(0, 5)
-    .map(
-      (u, i) =>
-        i + 1 + ". " + (u.n || "?") + (u.u ? " (@" + u.u + ")" : "") + " - " + n(u.c) + " ta amal",
-    )
-    .join("\n");
-
-  const feats = Object.entries(stats.features)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => "• " + (FEATURE_NAMES[k] || k) + ": " + n(v))
-    .join("\n");
-
-  const tags = Object.entries(stats.tags)
-    .sort((a, b) => b[1].c - a[1].c)
-    .slice(0, 5)
-    .map(
-      ([t, v], i) =>
-        i + 1 + ". " + (v.k === "clan" ? "🛡 " : "👤 ") + (v.n || t) + " (" + t + ") - " + v.c + " marta",
-    )
-    .join("\n");
-
-  const groups = chats
-    .slice(0, 5)
-    .map((c) => "• " + (c.t || "nomsiz"))
-    .join("\n");
-
-  return [
-    "📊 ClashPulse statistikasi",
-    "",
-    "👥 Jami foydalanuvchi: " + n(users.length),
-    "🆕 Oxirgi 24 soatda yangi: " + n(fresh),
-    "🔥 Oxirgi 24 soatda faol: " + n(day),
-    "📅 Oxirgi 7 kunda faol: " + n(week),
-    "💬 Guruhlar: " + n(chats.length),
-    groups ? groups : null,
-    "",
-    "🧩 Funksiyalar bo'yicha:",
-    feats || "hali yo'q",
-    "",
-    "🥇 Eng faol foydalanuvchilar:",
-    top || "hali yo'q",
-    "",
-    "🔎 Eng ko'p qidirilgan:",
-    tags || "hali yo'q",
-  ]
-    .filter((x) => x !== null)
-    .join("\n");
-}
-
-// ---------- Clash of Clans API ----------
+// Tugma bosilgandan keyin foydalanuvchi tegni yuborishini kutish
 const waiting = new Map();
 const cid = (ctx) => ctx.chat?.id ?? ctx.from?.id;
-const isPrivate = (ctx) => ctx.chat?.type === "private";
-const isAdmin = (ctx) => ADMIN_ID !== "" && String(ctx.from?.id) === ADMIN_ID;
 
 async function coc(path) {
   const token = process.env.COC_API_TOKEN;
@@ -137,8 +15,10 @@ async function coc(path) {
       headers: { Authorization: "Bearer " + token },
     });
     if (res.status === 404) return { error: "Topilmadi. Tegni tekshiring." };
-    if (res.status === 403)return { error: "API ruxsat bermadi (403). IP yoki kalitni tekshiring." };
-    if (res.status === 429)return { error: "So'rovlar ko'p. Birozdan keyin urinib ko'ring." };
+    if (res.status === 403)
+      return { error: "API ruxsat bermadi (403). IP yoki kalitni tekshiring." };
+    if (res.status === 429)
+      return { error: "So'rovlar ko'p. Birozdan keyin urinib ko'ring." };
     if (!res.ok) return { error: "API xatosi: " + res.status };
     return { data: await res.json() };
   } catch (e) {
@@ -171,60 +51,6 @@ function progressOf(list) {
 function progressLine(label, list) {
   const p = progressOf(list);
   return p === null ? null : label + ": " + bar(p) + " " + p + "%";
-}
-
-function chartUrl(title, labels, values, color) {
-  const cfg = {
-    type: "horizontalBar",
-    data: {
-      labels: labels.map((l) => String(l).slice(0, 14)),
-      datasets: [{ data: values, backgroundColor: color }],
-    },
-    options: {
-      legend: { display: false },
-      title: { display: true, text: title },
-    },
-  };
-  return (
-    "https://quickchart.io/chart?width=700&height=420&backgroundColor=white&c=" +
-    encodeURIComponent(JSON.stringify(cfg))
-  );
-}
-
-// Inline uchun qisqa matnlar
-function playerSummary(p) {
-  const heroes = (p.heroes || []).filter((h) => h.village === "home");
-  const hp = progressOf(heroes);
-  return [
-    "👤 " + p.name + " (" + p.tag + ")",
-    "🏰 Town Hall: " + p.townHallLevel + " | ⭐ Daraja: " + p.expLevel,
-    "🏆 Kubok: " + n(p.trophies) + " (eng yuqori " + n(p.bestTrophies) + ")",
-    "⚔️ Urush yulduzlari: " + n(p.warStars),
-    "🤝 Donat: " + n(p.donations) + " / " + n(p.donationsReceived),
-    "🏷 Klan: " + (p.clan ? p.clan.name : "klanda emas"),
-    hp !== null ? "🦸 Qahramonlar: " + bar(hp) + " " + hp + "%" : null,
-    "",
-    "To'liq tahlil: @" + BOT_USERNAME,
-  ]
-    .filter((x) => x !== null)
-    .join("\n");
-}
-
-function clanSummary(c) {
-  const leader = (c.memberList || []).find((m) => m.role === "leader");
-  return [
-    "🛡 " + c.name + " (" + c.tag + ")",
-    "📈 Daraja: " + c.clanLevel + " | 👥 A'zolar: " + c.members + "/50",
-    leader ? "👑 Lider: " + leader.name : null,
-    "🏆 Klan ballari: " + n(c.clanPoints),
-    "⚔️ Urush g'alabalari: " + n(c.warWins) + " | 🔥 Seriya: " + n(c.warWinStreak),
-    c.warLeague ? "🏅 Urush ligasi: " + c.warLeague.name : null,
-    "🔓 Turi: " + c.type,
-    "",
-    "To'liq tahlil: @" + BOT_USERNAME,
-  ]
-    .filter((x) => x !== null)
-    .join("\n");
 }
 
 async function playerReport(tag) {
@@ -318,7 +144,7 @@ async function playerReport(tag) {
 
   const parts = [part1, part2];
   if (part3.trim()) parts.push(part3.trim());
-  return { parts, clanTag: p.clan ? p.clan.tag : null, name: p.name };
+  return { parts, clanTag: p.clan ? p.clan.tag : null };
 }
 
 async function clanReport(tag) {
@@ -341,7 +167,8 @@ async function clanReport(tag) {
   });
   const leader = members.find((m) => m.role === "leader");
 
- const games = Number(c.warWins) + Number(c.warLosses) + Number(c.warTies);
+  const games = (c.warWinso'shin bering.");
+  if (!0) + (c.warTies || 0);
   const winRate =
     c.isWarLogPublic && games
       ? Math.round(((c.warWins || 0) / games) * 100) + "%"
@@ -356,7 +183,8 @@ async function clanReport(tag) {
     "📈 Daraja: " + c.clanLevel,
     "👥 A'zolar: " + c.members + "/50",
     leader ? "👑 Lider: " + leader.name : null,
-    c.location ? "🌍 Joylashuv: " + c.location.name : null,"🔓 Turi: " + c.type,
+    c.location ? "🌍 Joylashuv: " + c.location.name : null,
+    "🔓 Turi: " + c.type,
     "🏆 Klan ballari: " + n(c.clanPoints),
     c.requiredTrophies ? "🎯 Talab: " + n(c.requiredTrophies) + " kubok" : null,
     c.requiredTownhallLevel ? "🏰 Talab: TH " + c.requiredTownhallLevel : null,
@@ -383,19 +211,21 @@ async function clanReport(tag) {
     "Jami donat: " + n(totalDon) + " (olingan " + n(totalRec) + ")",
     "O'rtacha donat: " + n(avgDon),
     "Faol (donat bergan): " + activePct + "% (" + inactive + " ta passiv)",
-    "Rollar: lider " + (roles.leader || 0) + ", katta " + (roles.coLeader || 0) + ", oqsoqol " + (roles.adminader || 0) + ", katta " + (roles.coLea0),
+    "Rollar: lider " + (roles.leaderl ? null : label + ": " + bar(p) + " " + 0) + ", oqsoqol " + (roles.admingrammy";
+
+const API = "https://api.cla0),
   ].join("\n");
 
-  const byTr = [...members].sort((a, b) => b.trophies - a.trophies).slice(0, 10);
-  const byDon = [...members].sort((a, b) => b.donations - a.donations).slice(0, 10);
-
-  const top10 = byTr
-    .map((m, i) => i + 1 + ". " + m.name + " - " + n(m.trophies))
+  const top10 = [...members]
+    .sort((a, b) => b.trophies - a.trophies)
+    .slice(0, 10)
+    .map((m, i) => (i + 1) + ". " + m.name + " - " + n(m.trophies))
     .join("\n");
 
-  const topDon = byDon
+  const topDon = [...members]
+    .sort((a, b) => b.donations - a.donations)
     .slice(0, 5)
-    .map((m, i) => i + 1 + ". " + m.name + " - " + n(m.donations))
+    .map((m, i) => (i + 1) + ". " + m.name + " - " + n(m.donations))
     .join("\n");
 
   const takers = members
@@ -415,10 +245,12 @@ async function clanReport(tag) {
       { preparation: "tayyorgarlik", inWar: "urush ketmoqda", warEnded: "urush tugadi" }[w.data.state] || w.data.state;
     warText =
       "\n\n⚔️ Joriy urush: " + st + "\n" +
-    w.data.clan.name + " " + (w.data.clan.stars) 
-    const ch = ctx.chat; 
-    const isGroup = ch && ch.type !== "p0.toFixed(1) + "%\n" +"vs " + w.data.opponent.name + " " + w.data.opponent.starsapi.clashofclans.com/v1";
-    const CONTACT = "hojam";const BOT_USE0.toFixed(1) + "%";
+      w.data.clan.name + " " + (w.data.clan.starsPYLQGRJCUV]{3,12}$/.test(t)) return null;
+  return "#" + t;
+0).toFixed(1) + "%\n" +
+      "vs " + w.data.opponent.name + " " + (w.data.opponent.starsconst CONTACT = "hojam";
+
+// Tugma bosilgandan keyin foydalanuvc0).toFixed(1) + "%";
   }
 
   const part3 =
@@ -427,25 +259,9 @@ async function clanReport(tag) {
     (takers ? "\n\n📥 Berganidan ko'p olganlar:\n" + takers : "") +
     warText;
 
-  const charts = [];
-  if (byTr.length)
-    charts.push(
-      chartUrl(c.name + " - Top 10 kubok", byTr.map((m) => m.name), byTr.map((m) => m.trophies), "#5b6ee1"),
-    );
-  if (totalDon > 0)
-    charts.push(
-      chartUrl(c.name + " - Top 10 donat", byDon.map((m) => m.name), byDon.map((m) => m.donations), "#2eb872"),
-    );
-
-  return {
-    parts: [part1, part2, part3],
-    name: c.name,
-    badge: c.badgeUrls ? c.badgeUrls.large || c.badgeUrls.medium : null,
-    charts,
-  };
+  return { parts: [part1, part2, part3] };
 }
 
-// ---------- Tugmalar va matnlar ----------
 const homeBtn = () => new InlineKeyboard().text("🏠 Bosh menyu", "menu");
 
 function mainMenu() {
@@ -469,10 +285,8 @@ const HELP_TEXT =
   "ClashPulse - Clash of Clans o'yinchilari va klanlari uchun tahlil boti.\n\n" +
   "Qanday ishlatiladi:\n" +
   "1. \"O'yinchi tahlili\" yoki \"Klan tahlili\" tugmasini bosing\n" +
-  "2.Tegni yuboring, masalan: #ABC123\n\n" +
+  "2. Tegni yuboring, masalan: #ABC123\n\n" +
   "Tegni topish: o'yinda profilingizni oching, teg ismingiz ostida yoziladi.\n\n" +
-  "Guruhda: /player #TAG yoki /clan #TAG\n" +
-  "Istalgan chatda: @" + BOT_USERNAME + " #TAG yozing, o'yinchi yoki klan ma'lumoti chiqadi.\n\n" +
   "Buyruqlar:\n" +
   "/start - Bosh menyu\n" +
   "/player #TAG - O'yinchi tahlili\n" +
@@ -500,7 +314,6 @@ async function sendPlayer(ctx, tag) {
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await playerReport(tag);
     if (r.error) return ctx.reply("❌ " + r.error, { reply_markup: homeBtn() });
-    viewed("player", tag, r.name);
     const kb = new InlineKeyboard();
     if (r.clanTag) kb.text("🛡 Klanni tahlil qilish", "t:c:" + r.clanTag).row();
     kb.text("🏠 Bosh menyu", "menu");
@@ -515,27 +328,7 @@ async function sendClan(ctx, tag) {
     await ctx.replyWithChatAction("typing").catch(() => {});
     const r = await clanReport(tag);
     if (r.error) return ctx.reply("❌ " + r.error, { reply_markup: homeBtn() });
-    viewed("clan", tag, r.name);
-    const [p1, p2, p3] = r.parts;
-
-    let sent = false;
-    if (r.badge) {
-      try {
-        await ctx.replyWithPhoto(r.badge, { caption: p1.slice(0, 1000) });
-        sent = true;
-      } catch (e) {}
-    }
-    if (!sent) await ctx.reply(p1);
-
-    await ctx.reply(p2);
-
-    for (const url of r.charts) {
-      try {
-        await ctx.replyWithPhoto(url);
-      } catch (e) {}
-    }
-
-    return ctx.reply(p3, { reply_markup: homeBtn() });
+    return sendParts(ctx, r.parts, homeBtn());
   } catch (e) {
     return ctx.reply("❌ Kutilmagan xato. Keyinroq urinib ko'ring.");
   }
@@ -551,7 +344,6 @@ function showMenu(ctx) {
   );
 }
 
-// ---------- Asosiy ----------
 export function registerCommands(bot) {
   bot.api
     .setMyCommands([
@@ -563,56 +355,28 @@ export function registerCommands(bot) {
     ])
     .catch(() => {});
 
-  bot.use(async (ctx, next) => {
-    try {
-      track(ctx);
-    } catch (e) {}
-    return next();
-  });
+  bot.command("start", (ctx) => showMenu(ctx));
 
-  bot.command("start", (ctx) => {
-    feat("start");
-    return showMenu(ctx);
-  });
+  bot.command("help", (ctx) =>
+    ctx.reply(HELP_TEXT, { reply_markup: helpKeyboard() }),
+  );
 
-  bot.command("help", (ctx) => {
-    feat("help");
-    return ctx.reply(HELP_TEXT, { reply_markup: helpKeyboard() });
-  });
-
-  bot.command("plans", (ctx) => {
-    feat("plans");
-    return ctx.reply(PLANS_TEXT, { reply_markup: homeBtn() });
-  });
+  bot.command("plans", (ctx) =>
+    ctx.reply(PLANS_TEXT, { reply_markup: homeBtn() }),
+  );
 
   bot.command("ping", (ctx) => ctx.reply("✅ ClashPulse ishlayapti!"));
 
-  bot.command("id", (ctx) => ctx.reply("Sizning ID: " + ctx.from.id));
-
   bot.command("ip", async (ctx) => {
-    if (ADMIN_ID !== "" && !isAdmin(ctx)) return;
     const r = await fetch("https://api.ipify.org");
     ctx.reply("IP: " + (await r.text()));
   });
 
-  bot.command("stats", (ctx) => {
-    if (ADMIN_ID === "")
-      return ctx.reply(
-        "ADMIN_ID sozlanmagan. Sizning ID: " + ctx.from.id +
-          "\n\nFadeHost'da ADMIN_ID o'zgaruvchisiga shu raqamni yozing.",
-      );
-    if (!isAdmin(ctx)) return;
-    saveStats();
-    return ctx.reply(statsText());
-  });
-
-  bot.command("player", async (ctx) => {const tag = cleanTag(ctx.match);
+  bot.command("player", async (ctx) => {
+    const tag = cleanTag(ctx.match);
     if (!tag) {
-      if (isPrivate(ctx)) {
-        waiting.set(cid(ctx), "player");
-        return ctx.reply("👤 O'yinchi tegini yuboring.\nMasalan: #ABC123");
-      }
-      return ctx.reply("Tegni shunday yozing:\n/player #ABC123");
+      waiting.set(cid(ctx), "player");
+      return ctx.reply("👤 O'yinchi tegini yuboring.\nMasalan: #ABC123");
     }
     return sendPlayer(ctx, tag);
   });
@@ -620,11 +384,8 @@ export function registerCommands(bot) {
   bot.command("clan", async (ctx) => {
     const tag = cleanTag(ctx.match);
     if (!tag) {
-      if (isPrivate(ctx)) {
-        waiting.set(cid(ctx), "clan");
-        return ctx.reply("🛡 Klan tegini yuboring.\nMasalan: #ABC123");
-      }
-      return ctx.reply("Tegni shunday yozing:\n/clan #ABC123");
+      waiting.set(cid(ctx), "clan");
+      return ctx.reply("🛡 Klan tegini yuboring.\nMasalan: #ABC123");
     }
     return sendClan(ctx, tag);
   });
@@ -636,8 +397,6 @@ export function registerCommands(bot) {
 
   bot.callbackQuery("player", async (ctx) => {
     await ctx.answerCallbackQuery();
-    if (!isPrivate(ctx))
-      return ctx.reply("Guruhda buyruqdan foydalaning:\n/player #ABC123");
     waiting.set(cid(ctx), "player");
     return ctx.reply(
       "👤 O'yinchi tahlili\n\nO'yinchi tegini yuboring.\nMasalan: #ABC123\n\nBekor qilish: /start",
@@ -646,8 +405,6 @@ export function registerCommands(bot) {
 
   bot.callbackQuery("clan", async (ctx) => {
     await ctx.answerCallbackQuery();
-    if (!isPrivate(ctx))
-      return ctx.reply("Guruhda buyruqdan foydalaning:\n/clan #ABC123");
     waiting.set(cid(ctx), "clan");
     return ctx.reply(
       "🛡 Klan tahlili\n\nKlan tegini yuboring.\nMasalan: #ABC123\n\nBekor qilish: /start",
@@ -656,13 +413,11 @@ export function registerCommands(bot) {
 
   bot.callbackQuery("plans", async (ctx) => {
     await ctx.answerCallbackQuery();
-    feat("plans");
     return ctx.reply(PLANS_TEXT, { reply_markup: homeBtn() });
   });
 
   bot.callbackQuery("help", async (ctx) => {
     await ctx.answerCallbackQuery();
-    feat("help");
     return ctx.reply(HELP_TEXT, { reply_markup: helpKeyboard() });
   });
 
@@ -673,78 +428,10 @@ export function registerCommands(bot) {
     return kind === "p" ? sendPlayer(ctx, tag) : sendClan(ctx, tag);
   });
 
-  // Inline rejim: istalgan chatda @clashpulsebot #TAG
-  bot.on("inline_query", async (ctx) => {
-    try {
-      const tag = cleanTag(ctx.inlineQuery.query);
-      if (!tag) {
-        return await ctx.answerInlineQuery(
-          [
-            {
-              type: "article",
-              id: "hint",
-              title: "Tegni yozing",
-              description: "Masalan: #ABC123 (o'yinchi yoki klan)",
-              input_message_content: {
-                message_text:
-                  "ClashPulse: @" + BOT_USERNAME + " #TAG yozib o'yinchi yoki klan ma'lumotini oling.",
-              },
-            },
-          ],
-          { cache_time: 5 },
-        );
-      }
-
-      const [pl, cl] = await Promise.all([
-        coc("/players/" + encodeURIComponent(tag)),
-        coc("/clans/" + encodeURIComponent(tag)),
-      ]);
-
-      const results = [];
-      if (pl.data) {
-        const p = pl.data;
-        viewed("player", tag, p.name, "inline");
-        results.push({
-          type: "article",
-          id: "p:" + tag,
-          title: "👤 " + p.name,
-          description:
-            "TH " + p.townHallLevel + " • " + n(p.trophies) + " kubok" +
-            (p.clan ? " • " + p.clan.name : ""),
-          thumbnail_url: p.league?.iconUrls?.small,
-          input_message_content: { message_text: playerSummary(p) },
-        });
-      }
-      if (cl.data) {
-        const c = cl.data;
-        viewed("clan", tag, c.name, "inline");
-        results.push({
-          type: "article",
-          id: "c:" + tag,
-          title: "🛡 " + c.name,
-          description:
-            "Daraja " + c.clanLevel + " • " + c.members + "/50 a'zo • " + n(c.clanPoints) + " ball",
-          thumbnail_url: c.badgeUrls?.small,
-          input_message_content: { message_text: clanSummary(c) },
-        });
-      }
-      if (!results.length) {
-        const msg = pl.error && pl.error !== "Topilmadi. Tegni tekshiring." ? pl.error : "Bu teg bo'yicha hech narsa topilmadi.";
-        results.push({
-          type: "article",
-          id: "none",title: "❌ " + msg,
-          input_message_content: { message_text: "❌ " + msg },
-        });
-      }
-      return await ctx.answerInlineQuery(results, { cache_time: 30 });
-    } catch (e) {}
-  });
-
-  // Oddiy matn: faqat shaxsiy chatda
+  // Oddiy matn: tugmadan keyin yuborilgan teg
   bot.on("message:text", async (ctx, next) => {
     const text = ctx.message.text;
     if (text.startsWith("/")) return next();
-    if (!isPrivate(ctx)) return next();
 
     const tag = cleanTag(text);
     const mode = waiting.get(cid(ctx));
